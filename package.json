@@ -1,0 +1,41 @@
+{
+  "name": "babel-plugin-pure-static-props",
+  "version": "0.1.0",
+  "description": "Fixes issue with tree shaking that can occur when using static properties on React components using styled-components",
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "repository": "https://github.com/mbrowne/babel-plugin-pure-static-props",
+  "author": "Matt Browne",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "prettier": "^1.18.2",
+    "rimraf": "^3.0.0"
+  },
+  "dependencies": {
+    "@babel/helper-annotate-as-pure": "^7.0.0",
+    "babel-plugin-syntax-jsx": "^6.18.0"
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "style": "prettier --write src/**/*.js",
+    "build": "babel src -d lib",
+    "watch": "yarn build -w",
+    "test": "jest",
+    "test:watch": "yarn test -- --watch",
+    "prepublish": "yarn clean && yarn build"
+  },
+  "keywords": [
+    "react",
+    "styled-components",
+    "tree shaking",
+    "code splitting",
+    "static properties",
+    "babel-plugin"
+  ]
+}
