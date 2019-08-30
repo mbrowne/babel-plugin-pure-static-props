@@ -1,30 +1,103 @@
+import template from '@babel/template'
 import syntax from 'babel-plugin-syntax-jsx'
 import annotateAsPure from '@babel/helper-annotate-as-pure'
 import isStatelessComponent from './isStatelessComponent'
 import isReactClass from './isReactClass'
 
+const buildIife = template('(function () {\nBODY;\n})();')
+
 export default function({ types: t }) {
-    const classComponentPaths = new Set()
-    let staticPropertiesToSet = []
+    // map of React function components to their static properties
+    const functionComponentStaticProperties = new Map()
 
     return {
         inherits: syntax,
         visitor: {
-            Program(programPath) {
-                // On program start, do an explicit traversal up front for this plugin
-                programPath.traverse({
-                    // Get a list of React classes with static properties before they're transpiled
-                    ClassDeclaration(path) {
-                        if (
-                            isReactClass(path.get('superClass'), path.scope, {})
-                        ) {
-                            classComponentPaths.add(path)
+            Program: {
+                enter(programPath) {
+                    // On program start, do an explicit traversal up front for this plugin
+                    programPath.traverse({
+                        ClassDeclaration: {
+                            exit(path) {
+                                if (
+                                    isReactClass(
+                                        path.get('superClass'),
+                                        path.scope,
+                                        {}
+                                    )
+                                ) {
+                                    const hasStaticProperties = path
+                                        .get('body.body')
+                                        .some(
+                                            classElementPath =>
+                                                classElementPath.isClassProperty() &&
+                                                classElementPath.node.static
+                                        )
+                                    if (hasStaticProperties) {
+                                        const componentNameIdentifier =
+                                            path.node.id
+                                        path.node.type = 'ClassExpression'
+                                        const iife = buildIife({
+                                            BODY: path.node,
+                                        })
+                                        annotateAsPure(iife.expression)
+                                        path.replaceWith(
+                                            t.VariableDeclaration('const', [
+                                                t.VariableDeclarator(
+                                                    componentNameIdentifier,
+                                                    iife.expression
+                                                ),
+                                            ])
+                                        )
+                                    }
+                                }
+                            },
+                        },
+                    })
+                },
+                exit() {
+                    // After the full program has been traversed, we now have a map of which functions are React
+                    // components that have static properties. So we can now replace each function declaration
+                    // with with an IIFE and put the static property assignments inside the IIFE.
+                    functionComponentStaticProperties.forEach(
+                        (staticProperties, functionComponentPath) => {
+                            const componentNameIdentifier =
+                                functionComponentPath.node.id
+
+                            // get or construct the function node to put inside the IIFE depending on whether or not
+                            // it's an arrow function
+                            const functionNode = functionComponentPath.isVariableDeclarator()
+                                ? t.VariableDeclaration('const', [
+                                      functionComponentPath.node,
+                                  ])
+                                : functionComponentPath.node
+
+                            const componentAndStaticProperties = [
+                                functionNode,
+                                ...staticProperties,
+                                t.ReturnStatement(componentNameIdentifier),
+                            ]
+                            const iife = buildIife({
+                                BODY: componentAndStaticProperties,
+                            })
+                            annotateAsPure(iife.expression)
+
+                            functionComponentPath
+                                .getStatementParent()
+                                .replaceWith(
+                                    t.VariableDeclaration('const', [
+                                        t.VariableDeclarator(
+                                            componentNameIdentifier,
+                                            iife.expression
+                                        ),
+                                    ])
+                                )
                         }
-                    },
-                })
+                    )
+                },
             },
 
-            AssignmentExpression(path) {
+            AssignmentExpression(path, state) {
                 if (
                     !path.get('left').isMemberExpression() ||
                     path.node.operator !== '='
@@ -39,72 +112,34 @@ export default function({ types: t }) {
                 if (!binding) {
                     return
                 }
-                const staticPropKey = memberExpression.property
-                const staticPropValue = node.right
+
+                // is this assignment in the same file as the function that it's modifying?
+                function isInSameFileAsFunctionDeclaration(functionScope) {
+                    const functionParentFile = functionScope.path.parent
+                    // ignore functions that aren't top-level functions in the file they're in
+                    if (functionParentFile.type !== 'File') {
+                        return false
+                    }
+                    return state.file.ast === functionParentFile
+                }
 
                 if (
-                    isStatelessComponent(binding.path) ||
-                    classComponentPaths.has(binding.path)
+                    isStatelessComponent(binding.path) &&
+                    isInSameFileAsFunctionDeclaration(binding.scope)
                 ) {
-                    // this will be passed as part of the second argument to Object.assign()
-                    staticPropertiesToSet.push(
-                        t.ObjectProperty(staticPropKey, staticPropValue)
+                    // add this static property to our map of static properties for this component
+                    const funcPath = binding.path
+                    const staticProperties =
+                        functionComponentStaticProperties.get(funcPath) || []
+                    staticProperties.push(path.parent)
+                    functionComponentStaticProperties.set(
+                        funcPath,
+                        staticProperties
                     )
-                    // check to see if the next statement is also a static property so we can group them together in a single
-                    // Object.assign() call in that case
-                    if (
-                        isNextStatementAlsoStaticPropertyAssignment(
-                            path,
-                            componentName
-                        )
-                    ) {
-                        path.getStatementParent().remove()
-                    } else {
-                        // If we've reached here, it's time to inject the Object.assign() statement.
-                        //
-                        // Just annotating the existing code with the /*#__PURE__*/ comment isn't enough...
-                        // the /*#__PURE__*/ annotation apparently only works for function calls. So we use Object.assign()
-                        // and add the annotation to that.
-                        const objectAssignCall = t.CallExpression(
-                            t.MemberExpression(
-                                t.Identifier('Object'),
-                                t.Identifier('assign')
-                            ),
-                            [
-                                componentNameIdentifier,
-                                t.ObjectExpression(staticPropertiesToSet),
-                            ]
-                        )
-                        path.replaceWith(objectAssignCall)
-                        annotateAsPure(objectAssignCall)
-
-                        staticPropertiesToSet = []
-                    }
+                    // remove the static property assignment; we'll re-add it inside the IIFE at the end
+                    path.remove()
                 }
             },
         },
     }
-}
-
-function isNextStatementAlsoStaticPropertyAssignment(
-    assignmentExprPath,
-    componentName
-) {
-    // the parent of the AssignmentExpression should be an ExpressionStatement
-    const parentPath = assignmentExprPath.getStatementParent()
-    const nextStatementPath = parentPath.getSibling(parentPath.key + 1)
-    if (!nextStatementPath.isExpressionStatement()) {
-        return false
-    }
-    const nextExpressionPath = nextStatementPath.get('expression')
-    if (
-        !(
-            nextExpressionPath.isAssignmentExpression() &&
-            nextExpressionPath.get('left').isMemberExpression()
-        )
-    ) {
-        return false
-    }
-    const identifier = nextExpressionPath.get('left.object')
-    return identifier.isIdentifier() && identifier.node.name === componentName
 }
