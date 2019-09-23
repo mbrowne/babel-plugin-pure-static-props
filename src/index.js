@@ -58,7 +58,7 @@ export default function({ types: t }) {
                 exit() {
                     // After the full program has been traversed, we now have a map of which functions are React
                     // components that have static properties. So we can now replace each function declaration
-                    // with with an IIFE and put the static property assignments inside the IIFE.
+                    // with an IIFE and put the static property assignments inside the IIFE.
                     functionComponentStaticProperties.forEach(
                         (staticProperties, functionComponentPath) => {
                             const componentNameIdentifier =
@@ -82,16 +82,36 @@ export default function({ types: t }) {
                             })
                             annotateAsPure(iife.expression)
 
-                            functionComponentPath
-                                .getStatementParent()
-                                .replaceWith(
-                                    t.VariableDeclaration('const', [
-                                        t.VariableDeclarator(
-                                            componentNameIdentifier,
-                                            iife.expression
-                                        ),
-                                    ])
+                            const parentPath = functionComponentPath.getStatementParent()
+                            // ensure that we keep any export declarations (as in `export function MyComponent() {...}`)
+                            if (parentPath.isExportDefaultDeclaration()) {
+                                parentPath.insertAfter(
+                                    t.ExportDefaultDeclaration(
+                                        componentNameIdentifier
+                                    )
                                 )
+                            } else if (parentPath.isExportNamedDeclaration()) {
+                                const exportDecl = t.ExportNamedDeclaration(
+                                    null,
+                                    [
+                                        t.ExportSpecifier(
+                                            componentNameIdentifier,
+                                            componentNameIdentifier
+                                        ),
+                                    ]
+                                )
+                                parentPath.insertAfter(exportDecl)
+                            }
+
+                            // replace the original function node with the IIFE
+                            parentPath.replaceWith(
+                                t.VariableDeclaration('const', [
+                                    t.VariableDeclarator(
+                                        componentNameIdentifier,
+                                        iife.expression
+                                    ),
+                                ])
+                            )
                         }
                     )
                 },
