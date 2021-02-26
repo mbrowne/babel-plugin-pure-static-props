@@ -41,14 +41,30 @@ export default function({ types: t }) {
                                             BODY: path.node,
                                         })
                                         annotateAsPure(iife.expression)
-                                        path.replaceWith(
-                                            t.VariableDeclaration('const', [
-                                                t.VariableDeclarator(
-                                                    componentNameIdentifier,
-                                                    iife.expression
-                                                ),
-                                            ])
-                                        )
+                                        const declarators = [
+                                            t.VariableDeclarator(
+                                                componentNameIdentifier,
+                                                iife.expression
+                                            ),
+                                        ]
+                                        if (
+                                            path.parentPath.isExportDefaultDeclaration()
+                                        ) {
+                                            path.parentPath.insertBefore(
+                                                t.VariableDeclaration(
+                                                    'const',
+                                                    declarators
+                                                )
+                                            )
+                                            path.replaceWith(path.node.id)
+                                        } else {
+                                            path.replaceWith(
+                                                t.VariableDeclaration(
+                                                    'const',
+                                                    declarators
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             },
