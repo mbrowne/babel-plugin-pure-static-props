@@ -15,7 +15,7 @@ function _defineProperty(obj, key, value) {
 import React from 'react'
 export const MyComponent =
     /*#__PURE__*/
-    (() => {
+    (function () {
         class MyComponent extends React.PureComponent {
             render() {
                 return <div>My Component</div>

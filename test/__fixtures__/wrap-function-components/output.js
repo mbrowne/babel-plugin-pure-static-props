@@ -2,7 +2,7 @@ import React from 'react'
 
 const FunctionComponent =
     /*#__PURE__*/
-    (() => {
+    (function () {
         function FunctionComponent() {
             return <div>My Component</div>
         }

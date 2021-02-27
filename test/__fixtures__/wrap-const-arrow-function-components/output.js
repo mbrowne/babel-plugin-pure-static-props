@@ -3,7 +3,7 @@ import React from 'react'
 const FunctionComponent =
     /*#__PURE__*/
     (function () {
-        function FunctionComponent() {
+        const FunctionComponent = () => {
             return <div>My Component</div>
         }
 
@@ -12,4 +12,4 @@ const FunctionComponent =
         return FunctionComponent
     })()
 
-export default FunctionComponent
+export { FunctionComponent }

@@ -16,7 +16,7 @@ import React from 'react'
 
 const MyComponent =
     /*#__PURE__*/
-    (() => {
+    (function () {
         class MyComponent extends React.Component {
             render() {
                 return <div>My Component</div>

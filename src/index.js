@@ -4,7 +4,7 @@ import annotateAsPure from '@babel/helper-annotate-as-pure'
 import isStatelessComponent from './isStatelessComponent'
 import isReactClass from './isReactClass'
 
-const buildIife = template('(() => {\nBODY;\n})();')
+const buildIife = template('(function() {\nBODY;\n})();')
 
 export default function({ types: t }) {
     // map of React function components to their static properties
