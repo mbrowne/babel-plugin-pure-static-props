@@ -16,13 +16,13 @@ import React from 'react'
 export const MyComponent =
     /*#__PURE__*/
     (() => {
-        var _class
-
-        _class = class MyComponent extends React.PureComponent {
+        class MyComponent extends React.PureComponent {
             render() {
                 return <div>My Component</div>
             }
         }
 
-        _defineProperty(_class, 'displayName', 'FancyName1')
+        _defineProperty(MyComponent, 'displayName', 'FancyName1')
+
+        return MyComponent
     })()

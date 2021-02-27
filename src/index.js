@@ -24,7 +24,8 @@ export default function({ types: t }) {
                                         path.get('superClass'),
                                         path.scope,
                                         {}
-                                    )
+                                    ) &&
+                                    path.parentPath.type !== 'BlockStatement'
                                 ) {
                                     const hasStaticProperties = path
                                         .get('body.body')
@@ -36,9 +37,11 @@ export default function({ types: t }) {
                                     if (hasStaticProperties) {
                                         const componentNameIdentifier =
                                             path.node.id
-                                        path.node.type = 'ClassExpression'
                                         const iife = buildIife({
-                                            BODY: path.node,
+                                            BODY: [
+                                                path.node,
+                                                t.ReturnStatement(path.node.id),
+                                            ],
                                         })
                                         annotateAsPure(iife.expression)
                                         const declarators = [
