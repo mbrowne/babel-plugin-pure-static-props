@@ -1,5 +1,5 @@
 import template from '@babel/template'
-import syntax from 'babel-plugin-syntax-jsx'
+import syntax from '@babel/plugin-syntax-jsx'
 import annotateAsPure from '@babel/helper-annotate-as-pure'
 import isStatelessComponent from './isStatelessComponent'
 import isReactClass from './isReactClass'

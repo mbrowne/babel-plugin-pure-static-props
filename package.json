@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-pure-static-props",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fixes issue with tree shaking that can occur when using static properties on React components using styled-components",
   "main": "lib/index.js",
   "files": [
@@ -9,6 +9,20 @@
   "repository": "https://github.com/mbrowne/babel-plugin-pure-static-props",
   "author": "Matt Browne",
   "license": "ISC",
+  "scripts": {
+    "clean": "rimraf lib",
+    "style": "prettier --write src/**/*.js",
+    "build": "babel src -d lib",
+    "watch": "yarn build -w",
+    "prepublishOnly": "npm-run-all test build",
+    "test": "jest",
+    "test:watch": "yarn test -- --watch",
+    "prepublish": "yarn clean && yarn build"
+  },
+  "dependencies": {
+    "@babel/helper-annotate-as-pure": "^7.0.0",
+    "@babel/plugin-syntax-jsx": "^7.12.13"
+  },
   "devDependencies": {
     "@babel/cli": "^7.5.5",
     "@babel/core": "^7.5.5",
@@ -16,21 +30,9 @@
     "@babel/preset-env": "^7.5.5",
     "babel-plugin-tester": "^10.0.0",
     "jest": "^26.6.3",
+    "npm-run-all": "^4.1.5",
     "prettier": "^1.18.2",
     "rimraf": "^3.0.0"
-  },
-  "dependencies": {
-    "@babel/helper-annotate-as-pure": "^7.0.0",
-    "babel-plugin-syntax-jsx": "^6.18.0"
-  },
-  "scripts": {
-    "clean": "rimraf lib",
-    "style": "prettier --write src/**/*.js",
-    "build": "babel src -d lib",
-    "watch": "yarn build -w",
-    "test": "jest",
-    "test:watch": "yarn test -- --watch",
-    "prepublish": "yarn clean && yarn build"
   },
   "keywords": [
     "react",

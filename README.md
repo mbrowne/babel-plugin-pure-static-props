@@ -1,12 +1,37 @@
 # babel-plugin-pure-static-props
 
-## DEPRECATED
-
-This plugin is deprecated in favor of https://github.com/styled-components/babel-plugin-styled-components/pull/248.
-It's possible that something other than styled-components might cause a similar issue, in which case this plugin might still be useful, but I won't be maintaining it. (Also, my implementation for babel-plugin-styled-components is a bit more efficient than what I did here.)
-
----
-
 Fixes an issue with tree shaking that can occur when using static properties on React components using styled-components.
 
 This plugin replaces static property assignments on React components (e.g. `MyComponent.defaultProps = {...}`) with `Object.assign()` statements annotated with `/*#__PURE__*/` comments so that tree-shaking will work correctly.
+
+## Install
+
+```bash
+npm i -D babel-plugin-pure-static-props
+```
+
+Or:
+
+```bash
+yarn add -D babel-plugin-pure-static-props
+```
+
+Then add the plugin to your Babel config as explained in the [Babel documentation](https://babeljs.io/docs/en/options#plugin-and-preset-options).
+
+Example `babel.config.js`:
+
+```js
+module.exports = {
+  presets: ['@babel/preset-env'],
+  plugins: [
+    '@babel/plugin-proposal-class-properties',
+    'babel-plugin-pure-static-props',
+  ],
+}
+```
+
+## Note on styled components
+
+The tree-shaking issue with static properties on React components also affects [styled components](https://styled-components.com/). This plugin only addresses tree-shaking for regular React components; it will not work on components created using the `styled` helper.
+
+A fix for styled components is in this PR: https://github.com/styled-components/babel-plugin-styled-components/pull/248.
