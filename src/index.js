@@ -1,10 +1,10 @@
 import template from '@babel/template'
-import syntax from 'babel-plugin-syntax-jsx'
+import syntax from '@babel/plugin-syntax-jsx'
 import annotateAsPure from '@babel/helper-annotate-as-pure'
 import isStatelessComponent from './isStatelessComponent'
 import isReactClass from './isReactClass'
 
-const buildIife = template('(() => {\nBODY;\n})();')
+const buildIife = template('(function() {\nBODY;\n})();')
 
 export default function({ types: t }) {
     // map of React function components to their static properties
@@ -24,7 +24,8 @@ export default function({ types: t }) {
                                         path.get('superClass'),
                                         path.scope,
                                         {}
-                                    )
+                                    ) &&
+                                    path.parentPath.type !== 'BlockStatement'
                                 ) {
                                     const hasStaticProperties = path
                                         .get('body.body')
@@ -36,19 +37,37 @@ export default function({ types: t }) {
                                     if (hasStaticProperties) {
                                         const componentNameIdentifier =
                                             path.node.id
-                                        path.node.type = 'ClassExpression'
                                         const iife = buildIife({
-                                            BODY: path.node,
+                                            BODY: [
+                                                path.node,
+                                                t.ReturnStatement(path.node.id),
+                                            ],
                                         })
                                         annotateAsPure(iife.expression)
-                                        path.replaceWith(
-                                            t.VariableDeclaration('const', [
-                                                t.VariableDeclarator(
-                                                    componentNameIdentifier,
-                                                    iife.expression
-                                                ),
-                                            ])
-                                        )
+                                        const declarators = [
+                                            t.VariableDeclarator(
+                                                componentNameIdentifier,
+                                                iife.expression
+                                            ),
+                                        ]
+                                        if (
+                                            path.parentPath.isExportDefaultDeclaration()
+                                        ) {
+                                            path.parentPath.insertBefore(
+                                                t.VariableDeclaration(
+                                                    'const',
+                                                    declarators
+                                                )
+                                            )
+                                            path.replaceWith(path.node.id)
+                                        } else {
+                                            path.replaceWith(
+                                                t.VariableDeclaration(
+                                                    'const',
+                                                    declarators
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             },
